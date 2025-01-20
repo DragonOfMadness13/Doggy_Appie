@@ -14,6 +14,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Psy10"
         android:name="com.example.psy10.DogsApp"
+        android:usesCleartextTraffic="true"
         tools:targetApi="31">
         <activity
             android:name=".MainActivity"

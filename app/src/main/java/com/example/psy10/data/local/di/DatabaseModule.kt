@@ -11,7 +11,6 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
-//Utwórz moduł Hilt (DatabaseModule) i skonfiguruj instancję Room:
 @Module
 @InstallIn(SingletonComponent::class)
 class DatabaseModule {
@@ -28,6 +27,8 @@ class DatabaseModule {
             appContext,
             AppDatabase::class.java,
             "DogsDB"
-        ).build()
+        )
+            .fallbackToDestructiveMigration() // To spowoduje usunięcie i ponowne utworzenie bazy danych
+            .build()
     }
 }

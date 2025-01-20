@@ -2,95 +2,81 @@ package com.example.psy10.ui.theme.dogs
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.Button
-import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import coil.compose.AsyncImage
 import com.example.psy10.data.models.Dog
+import android.util.Log
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DogsScreen(
     modifier: Modifier = Modifier,
     viewModel: DogsViewModel = hiltViewModel(),
     navigationController: NavController,
 ) {
+    Log.d("DogsScreen", "DogsScreen composable started")
     val items by viewModel.uiState.collectAsStateWithLifecycle()
-    if (items is UiState.Success) {
-        DogListItem(
-            items = (items as UiState.Success).data,
-            onAdd = viewModel::addDog,
-            onDeleteClick = viewModel::removeDog,
-            onFavoriteClick = viewModel::triggerFav,
-            onDogClick = { navigationController.navigate("details") },
-            onSetClick = { navigationController.navigate("settings") },
-            onProClick = { navigationController.navigate("profile") },
-            modifier = modifier,
-        )
+
+    when (items) {
+        is UiState.Success -> {
+            Log.d("DogsScreen", "Showing success state with ${(items as UiState.Success).data.size} dogs")
+            DogListContent(
+                items = (items as UiState.Success).data,
+                onAdd = viewModel::addDog,
+                onDeleteClick = viewModel::removeDog,
+                onFavoriteClick = viewModel::triggerFav,
+                onDogClick = { dogId -> navigationController.navigate("details/$dogId") },
+                onSetClick = { navigationController.navigate("settings") },
+                onProClick = { navigationController.navigate("profile") },
+                modifier = modifier,
+            )
+        }
+        is UiState.Loading -> {
+            Log.d("DogsScreen", "Showing loading state")
+            Text("Loading...")
+        }
+        is UiState.Error -> {
+            Log.e("DogsScreen", "Showing error state", (items as UiState.Error).throwable)
+            Text("Error: ${(items as UiState.Error).throwable.message}")
+        }
     }
 }
 
-
 @Composable
-fun DogListItem(
+fun DogListContent(
     items: List<Dog>,
     onFavoriteClick: (id: Int) -> Unit,
     onAdd: (name: String) -> Unit,
     onDeleteClick: (id: Int) -> Unit,
-    onDogClick: () -> Unit,
+    onDogClick: (dogId: Int) -> Unit,
     onSetClick: () -> Unit,
     onProClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         var searchQuery by remember { mutableStateOf("") }
         var errorMessage by remember { mutableStateOf("") }
         var isSearching by remember { mutableStateOf(false) }
-        var searchResult= remember(items, searchQuery, isSearching) {
+
+        val searchResult = remember(items, searchQuery, isSearching) {
             if (isSearching && searchQuery.isNotEmpty()) {
                 items.filter { it.name.contains(searchQuery, ignoreCase = true) }
             } else {
@@ -98,9 +84,10 @@ fun DogListItem(
             }
         }
 
-        var totaldogs = items.size
-        var favoriteDogs = items.count { it.isFav }
+        val totaldogs = items.size
+        val favoriteDogs = items.count { it.isFav }
 
+        // Top Bar
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -109,7 +96,7 @@ fun DogListItem(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            IconButton(onClick = { onSetClick() }) {
+            IconButton(onClick = onSetClick) {
                 Icon(
                     imageVector = Icons.Default.Settings,
                     contentDescription = "Settings",
@@ -122,7 +109,7 @@ fun DogListItem(
                 fontWeight = FontWeight.Bold,
                 fontSize = 20.sp
             )
-            IconButton(onClick = { onProClick() }) {
+            IconButton(onClick = onProClick) {
                 Icon(
                     imageVector = Icons.Default.Person,
                     contentDescription = "Profile",
@@ -131,50 +118,55 @@ fun DogListItem(
             }
         }
 
+        // Search and Add
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
-            modifier = Modifier
-                .fillMaxWidth()
+            modifier = Modifier.fillMaxWidth()
         ) {
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = {
                     searchQuery = it
-                    isSearching = false
-                                },
+                    isSearching = true
+                },
                 placeholder = { Text("Poszukaj lub dodaj pieska 🐕") },
                 modifier = Modifier
                     .weight(1f)
                     .background(if (errorMessage.isNotEmpty()) Color.Red.copy(alpha = 0.1f) else Color.Transparent)
             )
             IconButton(
-                onClick = {searchResult},
-                enabled = searchQuery.isNotEmpty(),
-                modifier = Modifier.padding(start = 8.dp)
+                onClick = { isSearching = true },
+                enabled = searchQuery.isNotEmpty()
             ) {
                 Icon(
-                    imageVector = androidx.compose.material.icons.Icons.Default.Search,
+                    imageVector = Icons.Default.Search,
                     contentDescription = "Search Dog"
                 )
             }
             IconButton(
                 onClick = {
-                    if (items.any { it.name.equals(searchQuery, ignoreCase = true) }) {
+                    Log.d("DogListContent", "Add button clicked with query: $searchQuery")
+                    if (searchQuery.isBlank()) {
+                        errorMessage = "Wprowadź imię pieska"
+                    } else if (items.any { it.name.equals(searchQuery, ignoreCase = true) }) {
                         errorMessage = "Piesek jest już na liście"
                     } else {
+                        Log.d("DogListContent", "Calling onAdd with name: $searchQuery")
                         onAdd(searchQuery)
                         searchQuery = ""
                         errorMessage = ""
                     }
-                }) {
+                }
+            ) {
                 Icon(
-                    imageVector = androidx.compose.material.icons.Icons.Default.Add,
+                    imageVector = Icons.Default.Add,
                     contentDescription = "Add Dog",
                     tint = Color.Black
                 )
             }
         }
+
         if (errorMessage.isNotEmpty()) {
             Text(
                 text = errorMessage,
@@ -190,53 +182,81 @@ fun DogListItem(
             modifier = Modifier.padding(vertical = 8.dp)
         )
 
-        items.forEach {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.clickable {
-                    onDogClick()
-                }
-            ) {
-                Text(
-                    "🐕", modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(brush = bcgradient())
-                        .padding(8.dp)
+        LazyColumn(
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(searchResult.size) { index ->
+                val dog = searchResult[index]
+                DogItem(
+                    dog = dog,
+                    onFavoriteClick = { onFavoriteClick(dog.id) },
+                    onDeleteClick = { onDeleteClick(dog.id) },
+                    onDogClick = { onDogClick(dog.id) }
                 )
-
-                Spacer(modifier = Modifier.width(8.dp))
-                Column(horizontalAlignment = Alignment.Start) {
-                    Text(it.name, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                    Text(it.breed, fontSize = 12.sp, color = Color.Gray)
-                }
-
-                Spacer(Modifier.weight(1f))
-
-                IconButton(onClick = { onFavoriteClick(it.id) }) {
-                    Text(
-                        text = if (it.isFav) "💜" else "🤍",
-                        fontSize = 20.sp
-                    )
-                }
-                IconButton(onClick = { onDeleteClick(it.id) }) {
-                    Icon(
-                        tint = Color.Red,
-                        imageVector = androidx.compose.material.icons.Icons.Default.Delete,
-                        contentDescription = "Delete"
-                    )
-                }
             }
         }
     }
 }
+
+@Composable
+fun DogItem(
+    dog: Dog,
+    onFavoriteClick: () -> Unit,
+    onDeleteClick: () -> Unit,
+    onDogClick: () -> Unit,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onDogClick)
+            .padding(8.dp)
+    ) {
+        // Dog Image
+        AsyncImage(
+            model = dog.imageUrl,
+            contentDescription = "Dog image",
+            modifier = Modifier
+                .size(50.dp)
+                .clip(RoundedCornerShape(8.dp)),
+            contentScale = ContentScale.Crop
+        )
+
+        Column(
+            modifier = Modifier.weight(1f)
+        ) {
+            Text(
+                text = dog.name,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = dog.breed,
+                fontSize = 12.sp,
+                color = Color.Gray
+            )
+        }
+
+        IconButton(onClick = onFavoriteClick) {
+            Text(
+                text = if (dog.isFav) "💜" else "🤍",
+                fontSize = 20.sp
+            )
+        }
+
+        IconButton(onClick = onDeleteClick) {
+            Icon(
+                tint = Color.Red,
+                imageVector = Icons.Default.Delete,
+                contentDescription = "Delete"
+            )
+        }
+    }
+}
+
 private fun bcgradient(): Brush {
     return Brush.linearGradient(
         colors = listOf(Color(0xFF65558F), Color(0xFFEEB6E8))
     )
 }
-//@Preview(showBackground = true)
-//@Composable
-//fun PreviewDogListApp() {
-//    DogListApp(navController: NavController)
-//}

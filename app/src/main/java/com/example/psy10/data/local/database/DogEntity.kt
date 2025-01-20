@@ -8,21 +8,24 @@ import androidx.room.PrimaryKey
 import androidx.room.Query
 import kotlinx.coroutines.flow.Flow
 
-//klasę danych Dog
+// Encja bazodanowa
 @Entity(tableName = "dogs")
 data class DogEntity(
     val name: String,
+    val breed: String,
+    val imageUrl: String,
+    val ownerName: String,
 
     @ColumnInfo(defaultValue = "0")
-    val isFav: Boolean
+    val isFav: Boolean = false
 ) {
     @PrimaryKey(autoGenerate = true)
     var uid: Int = 0
 }
-//DAO jest interfejsem definiującym operacje na bazie danych
+
+// Data Access Object (DAO) dla operacji bazodanowych
 @Dao
 interface DogEntityDao {
-
     @Query("SELECT * FROM dogs")
     fun getAllDogs(): Flow<List<DogEntity>>
 
@@ -31,6 +34,9 @@ interface DogEntityDao {
 
     @Query("SELECT * FROM dogs WHERE isFav = 1")
     fun getAllFavDogs(): Flow<List<DogEntity>>
+
+    @Query("SELECT * FROM dogs WHERE uid = :id")
+    suspend fun getDogById(id: Int): DogEntity?
 
     @Query("UPDATE dogs SET isFav = CASE WHEN isFav = 1 THEN 0 ELSE 1 END WHERE uid = :id")
     suspend fun triggerFavDog(id: Int)

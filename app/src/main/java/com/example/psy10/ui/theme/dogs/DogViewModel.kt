@@ -1,5 +1,6 @@
 package com.example.psy10.ui.theme.dogs
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.psy10.data.DogRepository
@@ -9,39 +10,70 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
-import com.example.psy10.ui.theme.dogs.UiState.Success
-import com.example.psy10.ui.theme.dogs.UiState.Loading
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import kotlinx.coroutines.flow.emptyFlow
 
 @HiltViewModel
 class DogsViewModel @Inject constructor(
     private val dogRepository: DogRepository
 ) : ViewModel() {
 
+    init {
+        Log.d("DogsViewModel", "ViewModel initialized")
+    }
+
     val uiState: StateFlow<UiState> = dogRepository
         .dogs
-        .map<List<Dog>, UiState> { Success(data = it) }
-        .catch { emit(UiState.Error(it)) }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), Loading)
+        .map<List<Dog>, UiState> {
+            Log.d("DogsViewModel", "Received ${it.size} dogs from repository")
+            UiState.Success(data = it)
+        }
+        .catch {
+            Log.e("DogsViewModel", "Error in dogs flow", it)
+            emit(UiState.Error(it))
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), UiState.Loading) // Zmienione na UiState.Loading
 
     fun addDog(name: String) {
+        Log.d("DogsViewModel", "Adding dog: $name")
+        if (name.isBlank()) {
+            Log.w("DogsViewModel", "Attempted to add dog with blank name")
+            return
+        }
+
         viewModelScope.launch {
-            dogRepository.add(name)
+            try {
+                Log.d("DogsViewModel", "Calling repository.add() for dog: $name")
+                dogRepository.add(name)
+                Log.d("DogsViewModel", "Successfully added dog: $name")
+            } catch (e: Exception) {
+                Log.e("DogsViewModel", "Error adding dog: $name", e)
+            }
         }
     }
 
     fun removeDog(id: Int) {
+        Log.d("DogsViewModel", "Removing dog with id: $id")
         viewModelScope.launch {
-            dogRepository.remove(id)
+            try {
+                dogRepository.remove(id)
+                Log.d("DogsViewModel", "Successfully removed dog with id: $id")
+            } catch (e: Exception) {
+                Log.e("DogsViewModel", "Error removing dog with id: $id", e)
+            }
         }
     }
 
     fun triggerFav(id: Int) {
+        Log.d("DogsViewModel", "Toggling favorite for dog with id: $id")
         viewModelScope.launch {
-            dogRepository.triggerFav(id)
+            try {
+                dogRepository.triggerFav(id)
+                Log.d("DogsViewModel", "Successfully toggled favorite for dog with id: $id")
+            } catch (e: Exception) {
+                Log.e("DogsViewModel", "Error toggling favorite for dog with id: $id", e)
+            }
         }
     }
 }
